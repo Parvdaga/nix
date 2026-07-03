@@ -490,12 +490,12 @@ export default function SettingsTab({
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "monospace", color: "secondary.main" }}>
-                    {groupInviteCode}
+                    {groupInviteCode.toUpperCase()}
                   </Typography>
                   <Button
                     size="small"
                     onClick={() => {
-                      navigator.clipboard.writeText(groupInviteCode);
+                      navigator.clipboard.writeText(groupInviteCode.toUpperCase());
                       setSuccessMsg("Invite code copied to clipboard!");
                     }}
                     startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}

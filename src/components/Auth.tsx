@@ -62,7 +62,11 @@ export default function Auth() {
         if (loginError) throw loginError;
       }
     } catch (err: any) {
-      setError(err.message || "An authentication error occurred.");
+      let msg = err.message || "An authentication error occurred.";
+      if (msg.includes("rate_limit") || msg.toLowerCase().includes("rate limit")) {
+        msg = "Email rate limit exceeded! If this is your project, disable 'Confirm email' under Supabase Dashboard -> Auth -> Providers -> Email to allow instant logins/signups for testing.";
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

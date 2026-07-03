@@ -290,6 +290,7 @@ export default function ExpenseDialog({
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={loading}
                 required
+                fullWidth
                 slotProps={{
                   input: {
                     startAdornment: <InputAdornment position="start">₹</InputAdornment>,
@@ -305,6 +306,7 @@ export default function ExpenseDialog({
                 onChange={(e) => setDate(e.target.value)}
                 disabled={loading}
                 required
+                fullWidth
                 slotProps={{
                   inputLabel: { shrink: true }
                 }}

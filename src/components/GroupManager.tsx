@@ -135,7 +135,7 @@ export default function GroupManager({
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
         .select("id, name")
-        .eq("invite_code", inviteCodeInput.trim())
+        .eq("invite_code", inviteCodeInput.trim().toLowerCase())
         .maybeSingle();
 
       if (groupError) throw groupError;
