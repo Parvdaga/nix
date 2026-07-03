@@ -22,9 +22,9 @@ create table public.profiles (
 alter table public.profiles enable row level security;
 
 -- Policies for Profiles
-create policy "Allow public profiles read access" 
-  on public.profiles for select 
-  using (true);
+create policy "Users can read their own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
 
 create policy "Allow users to update their own profile" 
   on public.profiles for update 
@@ -45,12 +45,6 @@ create table public.groups (
 );
 
 alter table public.groups enable row level security;
-
--- Add select policy for groups by invite code
-create policy "Allow select groups by invite code"
-  on public.groups for select
-  using (true);
-
 
 -- 3. Create Group Members Table
 -- This junction table represents both registered app users and offline placeholder members.
@@ -119,6 +113,120 @@ begin
   );
 end;
 $$ language plpgsql;
+
+-- Return member display data, including UPI, only to authenticated users who
+-- already belong to the target group. This avoids making profiles globally
+-- readable just so group screens can display member names/payment handles.
+create or replace function public.get_group_members_for_group(target_group_id uuid)
+returns table (
+  id uuid,
+  group_id uuid,
+  profile_id uuid,
+  dummy_name text,
+  dummy_upi_id text,
+  name text,
+  upi_id text
+)
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_group_member(target_group_id, auth.uid()) then
+    raise exception 'Not allowed to view members for this group' using errcode = '42501';
+  end if;
+
+  return query
+    select
+      gm.id,
+      gm.group_id,
+      gm.profile_id,
+      gm.dummy_name,
+      gm.dummy_upi_id,
+      coalesce(p.name, gm.dummy_name) as name,
+      coalesce(p.upi_id, gm.dummy_upi_id) as upi_id
+    from public.group_members gm
+    left join public.profiles p on p.id = gm.profile_id
+    where gm.group_id = target_group_id
+    order by gm.created_at asc;
+end;
+$$ language plpgsql stable;
+
+-- Add a registered user by exact UPI handle without exposing the profiles table
+-- for client-side searching/enumeration.
+create or replace function public.add_registered_member_by_upi(
+  target_group_id uuid,
+  target_upi_id text
+)
+returns table (
+  profile_id uuid,
+  name text
+)
+security definer
+set search_path = public
+as $$
+declare
+  found_profile record;
+begin
+  if not public.is_group_member(target_group_id, auth.uid()) then
+    raise exception 'Not allowed to add members to this group' using errcode = '42501';
+  end if;
+
+  select p.id, p.name
+    into found_profile
+  from public.profiles p
+  where exists (
+    select 1
+    from unnest(string_to_array(coalesce(p.upi_id, ''), ',')) as handle
+    where trim(handle) = trim(target_upi_id)
+  )
+  limit 1;
+
+  if found_profile.id is null then
+    return;
+  end if;
+
+  insert into public.group_members (group_id, profile_id)
+  values (target_group_id, found_profile.id)
+  on conflict (group_id, profile_id) do nothing;
+
+  return query select found_profile.id::uuid, found_profile.name::text;
+end;
+$$ language plpgsql volatile;
+
+grant execute on function public.get_group_members_for_group(uuid) to authenticated;
+grant execute on function public.add_registered_member_by_upi(uuid, text) to authenticated;
+
+-- Join a group by invite code without making all group rows publicly readable.
+create or replace function public.join_group_by_invite_code(target_invite_code text)
+returns table (
+  id uuid,
+  name text
+)
+security definer
+set search_path = public
+as $$
+declare
+  found_group record;
+begin
+  select g.id, g.name
+    into found_group
+  from public.groups g
+  where lower(g.invite_code) = lower(trim(target_invite_code))
+  limit 1;
+
+  if found_group.id is null then
+    return;
+  end if;
+
+  insert into public.group_members (group_id, profile_id)
+  values (found_group.id, auth.uid())
+  on conflict (group_id, profile_id) do nothing;
+
+  return query select found_group.id::uuid, found_group.name::text;
+end;
+$$ language plpgsql volatile;
+
+grant execute on function public.join_group_by_invite_code(text) to authenticated;
 
 
 -- Groups Policies

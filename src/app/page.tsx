@@ -46,7 +46,7 @@ export default function Page() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, name, upi_id, pin_hash, created_at")
         .eq("id", userId)
         .maybeSingle();
 

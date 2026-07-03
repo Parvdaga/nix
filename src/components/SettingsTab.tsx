@@ -308,7 +308,7 @@ export default function SettingsTab({
   };
 
   return (
-    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2, gap: 2.5, overflowY: "auto" }}>
+    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2.5, gap: 3, overflowY: "auto" }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
         Settings & Settings Profile
       </Typography>
@@ -538,14 +538,12 @@ export default function SettingsTab({
             {groupInviteCode && (
               <Box
                 sx={{
-                  p: 2,
-                  borderRadius: 3.5,
-                  bgcolor: "rgba(255, 255, 255, 0.02)",
-                  border: "1px dashed rgba(255, 255, 255, 0.08)",
+                  p: 3,
+                  borderRadius: 2,
+                  bgcolor: "rgba(255, 255, 255, 0.04)",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 1,
-                  mb: 1,
+                  gap: 1.5,
                 }}
               >
                 <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
@@ -562,7 +560,7 @@ export default function SettingsTab({
                       setSuccessMsg("Invite code copied to clipboard!");
                     }}
                     startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
-                    sx={{ minWidth: 0, px: 1.5 }}
+                    sx={{ minWidth: 0, px: 1.5, py: 0.5 }}
                   >
                     Copy
                   </Button>

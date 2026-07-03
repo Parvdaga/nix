@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { GroupMember, Expense, Profile } from "@/types";
 import { calculateMemberBalances } from "@/lib/utils/split";
+import { fetchGroupMembers } from "@/lib/groupMembers";
 import GroupManager from "./GroupManager";
 import MembersTab from "./MembersTab";
 import ExpensesTab from "./ExpensesTab";
@@ -47,6 +48,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [activeGroupName, setActiveGroupName] = useState<string | null>(null);
   const [activeGroupInviteCode, setActiveGroupInviteCode] = useState<string | null>(null);
+  const [activeGroupCreatorId, setActiveGroupCreatorId] = useState<string | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
@@ -84,16 +86,17 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
         const firstGroupId = memberships[0].group_id;
         setActiveGroupId(firstGroupId);
 
-        // Fetch name and invite code of this group
+        // Fetch name, invite code, and creator of this group
         const { data: grp } = await supabase
           .from("groups")
-          .select("name, invite_code")
+          .select("name, invite_code, created_by")
           .eq("id", firstGroupId)
           .single();
 
         if (grp) {
           setActiveGroupName(grp.name);
           setActiveGroupInviteCode(grp.invite_code);
+          setActiveGroupCreatorId(grp.created_by);
         }
       }
     } catch (err) {
@@ -106,32 +109,8 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
   const fetchGroupData = async () => {
     if (!activeGroupId) return;
     try {
-      // 1. Fetch group members
-      const { data: memData } = await supabase
-        .from("group_members")
-        .select(`
-          id,
-          group_id,
-          profile_id,
-          dummy_name,
-          dummy_upi_id,
-          profiles (
-            name,
-            upi_id
-          )
-        `)
-        .eq("group_id", activeGroupId);
-
-      const formattedMembers: GroupMember[] = (memData || []).map((m: any) => ({
-        id: m.id,
-        group_id: m.group_id,
-        profile_id: m.profile_id,
-        dummy_name: m.dummy_name,
-        dummy_upi_id: m.dummy_upi_id,
-        profiles: m.profiles,
-        name: m.profile_id ? m.profiles?.name || "Active User" : m.dummy_name || "Offline Friend",
-        upi_id: m.profile_id ? m.profiles?.upi_id || null : m.dummy_upi_id || null,
-      }));
+      // 1. Fetch group members through a restricted RPC so profiles are not publicly readable.
+      const formattedMembers = await fetchGroupMembers(activeGroupId);
       setMembers(formattedMembers);
 
       // 2. Fetch expenses and splits
@@ -167,21 +146,23 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
 
   const handleSelectGroup = async (groupId: string) => {
     setActiveGroupId(groupId);
-    // Fetch group details
-    const { data } = await supabase.from("groups").select("name, invite_code").eq("id", groupId).single();
+    setActiveGroupCreatorId(null); // Clear stale creator while fetching new group
+    const { data } = await supabase.from("groups").select("name, invite_code, created_by").eq("id", groupId).single();
     if (data) {
       setActiveGroupName(data.name);
       setActiveGroupInviteCode(data.invite_code);
+      setActiveGroupCreatorId(data.created_by);
     }
     setRefreshCounter((c) => c + 1);
   };
 
   const handleGroupUpdated = async () => {
     if (activeGroupId) {
-      const { data } = await supabase.from("groups").select("name, invite_code").eq("id", activeGroupId).single();
+      const { data } = await supabase.from("groups").select("name, invite_code, created_by").eq("id", activeGroupId).single();
       if (data) {
         setActiveGroupName(data.name);
         setActiveGroupInviteCode(data.invite_code);
+        setActiveGroupCreatorId(data.created_by);
       }
       setRefreshCounter((c) => c + 1);
     }
@@ -436,6 +417,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
               <MembersTab
                 groupId={activeGroupId}
                 currentUserId={profile.id}
+                groupCreatorId={activeGroupCreatorId}
                 refreshTrigger={refreshCounter}
                 onMembersChange={triggerRefresh}
               />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { simplifyDebts } from "@/lib/utils/split";
 import { buildUpiLink } from "@/lib/payments/upi";
 import { hashPin } from "@/lib/security/crypto";
@@ -11,14 +11,11 @@ import confetti from "canvas-confetti";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
 import Card from "@mui/material/Card";
 import Drawer from "@mui/material/Drawer";
 import Alert from "@mui/material/Alert";
 import Grid from "@mui/material/Grid";
-import InputAdornment from "@mui/material/InputAdornment";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
 import CallMadeIcon from "@mui/icons-material/CallMade";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -43,10 +40,8 @@ export default function SettleUpTab({
   expenses,
   currentUserId,
   currentUserPinHash,
-  refreshTrigger,
   onSettled,
 }: SettleUpTabProps) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   
@@ -61,13 +56,12 @@ export default function SettleUpTab({
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (members.length > 0) {
-      const simplified = simplifyDebts(members, expenses);
-      setTransactions(simplified);
-    }
-  }, [members, expenses, refreshTrigger]);
+  const currentUserMember = members.find((member) => member.profile_id === currentUserId);
+  const currentUserMemberId = currentUserMember?.id ?? null;
+  const transactions = useMemo(
+    () => (members.length > 0 ? simplifyDebts(members, expenses) : []),
+    [members, expenses]
+  );
 
   // Generate UPI payment URL and QR Code
   const generateUpiData = async (tx: Transaction, upiAddress: string) => {
@@ -194,8 +188,8 @@ export default function SettleUpTab({
 
       setDrawerOpen(false);
       onSettled();
-    } catch (err: any) {
-      setPinError(err.message || "Failed to log settlement.");
+    } catch (err: unknown) {
+      setPinError(err instanceof Error ? err.message : "Failed to log settlement.");
     } finally {
       setLoading(false);
     }
@@ -209,18 +203,18 @@ export default function SettleUpTab({
 
       <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
         {transactions.map((tx, idx) => {
-          const isCurrentUserDebtor = tx.fromMember.profile_id === currentUserId;
-          const isCurrentUserCreditor = tx.toMember.profile_id === currentUserId;
+          const isCurrentUserDebtor = tx.fromMember.id === currentUserMemberId;
+          const isCurrentUserCreditor = tx.toMember.id === currentUserMemberId;
           
           return (
             <Card
               key={idx}
               variant="outlined"
-              onClick={() => handleOpenSettleDrawer(tx)}
+              onClick={() => isCurrentUserDebtor ? handleOpenSettleDrawer(tx) : undefined}
               sx={{
                 p: 2.5,
                 borderRadius: 4,
-                cursor: "pointer",
+                cursor: isCurrentUserDebtor ? "pointer" : "default",
                 borderColor: isCurrentUserDebtor
                   ? "rgba(244, 63, 94, 0.25)"
                   : isCurrentUserCreditor
@@ -251,17 +245,19 @@ export default function SettleUpTab({
                 <Typography variant="body2" sx={{ fontWeight: 850, color: isCurrentUserDebtor ? "error.main" : "success.main" }}>
                   ₹{tx.amount}
                 </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    borderRadius: 3,
-                    borderColor: isCurrentUserDebtor ? "error.main" : "primary.main",
-                    color: isCurrentUserDebtor ? "error.main" : "primary.main",
-                  }}
-                >
-                  Pay
-                </Button>
+                {isCurrentUserDebtor ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderRadius: 3,
+                      borderColor: "error.main",
+                      color: "error.main",
+                    }}
+                  >
+                    Pay
+                  </Button>
+                ) : null}
               </Box>
             </Card>
           );
@@ -387,8 +383,9 @@ export default function SettleUpTab({
                         <Card
                           variant="outlined"
                           sx={{
-                            p: 1.5,
-                            borderRadius: 3.5,
+                            px: 2.5,
+                            py: 1.5,
+                            borderRadius: 2,
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
@@ -402,7 +399,7 @@ export default function SettleUpTab({
                             size="small"
                             onClick={handleCopyUpi}
                             startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
-                            sx={{ minWidth: 0, px: 1 }}
+                            sx={{ minWidth: 0, px: 1, py: 0.5 }}
                           >
                             {copiedUpi ? "Copied" : "Copy"}
                           </Button>

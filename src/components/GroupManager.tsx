@@ -132,42 +132,18 @@ export default function GroupManager({
     setError(null);
 
     try {
-      // 1. Search group by invite code
-      const { data: groupData, error: groupError } = await supabase
-        .from("groups")
-        .select("id, name")
-        .eq("invite_code", inviteCodeInput.trim().toLowerCase())
-        .maybeSingle();
+      const { data, error: joinError } = await supabase.rpc("join_group_by_invite_code", {
+        target_invite_code: inviteCodeInput.trim(),
+      });
 
-      if (groupError) throw groupError;
+      if (joinError) throw joinError;
+
+      const groupData = Array.isArray(data) ? data[0] : null;
       if (!groupData) {
         setError("Invalid invite code. Please check and try again.");
         setJoinLoading(false);
         return;
       }
-
-      // 2. Check if already a member
-      const { data: existingMember, error: memberQueryError } = await supabase
-        .from("group_members")
-        .select("id")
-        .eq("group_id", groupData.id)
-        .eq("profile_id", userId)
-        .maybeSingle();
-
-      if (memberQueryError) throw memberQueryError;
-      if (existingMember) {
-        setError("You are already a member of this group!");
-        setJoinLoading(false);
-        return;
-      }
-
-      // 3. Add current user as member
-      const { error: joinError } = await supabase.from("group_members").insert({
-        group_id: groupData.id,
-        profile_id: userId,
-      });
-
-      if (joinError) throw joinError;
 
       setInviteCodeInput("");
       setJoinDialogOpen(false);

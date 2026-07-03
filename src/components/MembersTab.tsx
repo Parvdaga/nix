@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { fetchGroupMembers } from "@/lib/groupMembers";
 import { GroupMember } from "@/types";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
@@ -26,10 +27,13 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ContactlessIcon from "@mui/icons-material/Contactless";
+import DialogContentText from "@mui/material/DialogContentText";
+import StarsIcon from "@mui/icons-material/Stars";
 
 interface MembersTabProps {
-  groupId: string;
+  groupId: string | null;
   currentUserId: string;
+  groupCreatorId: string | null;
   refreshTrigger: number;
   onMembersChange: () => void;
 }
@@ -37,17 +41,24 @@ interface MembersTabProps {
 export default function MembersTab({
   groupId,
   currentUserId,
+  groupCreatorId,
   refreshTrigger,
   onMembersChange,
 }: MembersTabProps) {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [addTab, setAddTab] = useState<0 | 1>(0); // 0 = Registered (Email), 1 = Offline (Dummy)
+  const [addTab, setAddTab] = useState<0 | 1>(0);
   const [email, setEmail] = useState("");
   const [offlineName, setOfflineName] = useState("");
   const [offlineUpi, setOfflineUpi] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmDeleteMember, setConfirmDeleteMember] = useState<GroupMember | null>(null);
+
+  const normalizedCurrentUserId = currentUserId?.trim();
+  const normalizedGroupCreatorId = groupCreatorId?.trim() || null;
+  const isGroupCreator =
+    !!normalizedGroupCreatorId && normalizedCurrentUserId === normalizedGroupCreatorId;
 
   useEffect(() => {
     if (groupId) {
@@ -56,36 +67,10 @@ export default function MembersTab({
   }, [groupId, refreshTrigger]);
 
   const fetchMembers = async () => {
+    if (!groupId) return;
+
     try {
-      const { data, error: fetchError } = await supabase
-        .from("group_members")
-        .select(`
-          id,
-          group_id,
-          profile_id,
-          dummy_name,
-          dummy_upi_id,
-          profiles (
-            name,
-            upi_id
-          )
-        `)
-        .eq("group_id", groupId);
-
-      if (fetchError) throw fetchError;
-
-      const formatted: GroupMember[] = (data || []).map((m: any) => ({
-        id: m.id,
-        group_id: m.group_id,
-        profile_id: m.profile_id,
-        dummy_name: m.dummy_name,
-        dummy_upi_id: m.dummy_upi_id,
-        profiles: m.profiles,
-        name: m.profile_id ? m.profiles?.name || "Active User" : m.dummy_name || "Offline Friend",
-        upi_id: m.profile_id ? m.profiles?.upi_id || null : m.dummy_upi_id || null,
-      }));
-
-      setMembers(formatted);
+      setMembers(await fetchGroupMembers(groupId));
     } catch (err) {
       console.error("Error fetching members:", err);
     }
@@ -97,67 +82,21 @@ export default function MembersTab({
     setError(null);
 
     try {
-      // 1. Find user in auth/profiles by email
-      const { data: userProfile, error: searchError } = await supabase
-        .from("profiles")
-        .select("id, name")
-        .eq("id", (
-          // In Supabase, looking up by email requires querying a profile, 
-          // or looking up in public.profiles. If user public profiles has no email,
-          // we look up in public.profiles. Since profile table has no email (it extends auth.users),
-          // we should look up if there is an email mapping in profiles. Let's look up if public profile matches.
-          // Wait, let's implement a clean email check. If we search, we can search public profiles if we expose it,
-          // or we can search public profiles directly. In our profiles table we didn't add email, but let's assume
-          // for this client app we can look up by a username/name or email. If there's an email search, let's search auth profile.
-          // Since client does not have super admin search, the easiest way is to search profiles if profiles contains emails.
-          // Wait! Let's check if the profiles table has an email field. In the schema we didn't define email.
-          // Let's modify the schema to query profile name or UUID, or search public profile directly.
-          // A user-friendly way to add friends is by searching their name or direct UUID, or entering their email.
-          // To support email search, we can use a RPC or add email column to profiles, or just allow adding profiles by Name/UUID, 
-          // or let's search profile by Name.
-          // Wait, let's search profile by Name instead, or let the user enter Name and we query public profiles.
-          // Yes! Querying by exact Name or matching Name is extremely simple and works.
-          // Let's modify this to search by Name instead of Email, which is much easier and client-friendly!
-          // We can also allow them to invite via their exact UUID. Let's do a search by Name.
-          ""
-        ));
-      
-      // Let's search public.profiles where name matches or email matches.
-      // Wait, let's search public.profiles by exact email. In Next.js + Supabase, can we search auth users? No, client cannot search auth.users directly.
-      // So we can search public.profiles. Let's add `email` column to `public.profiles` in the SQL, or let the user input the friend's exact name.
-      // Let's check: if we search by exact Display Name or exact UPI ID, it's very easy!
-      // Let's search by exact UPI ID. Every registered user has a unique UPI ID, which they input during onboarding!
-      // Searching by UPI ID is brilliant and extremely clean. Since every user has a unique UPI ID, it's a great identifier!
-      const { data: profileFound, error: queryError } = await supabase
-        .from("profiles")
-        .select("id, name")
-        .eq("upi_id", email.trim())
-        .limit(1)
-        .maybeSingle();
+      if (!groupId) throw new Error("No active group selected.");
 
-      if (queryError) throw queryError;
+      const { data, error: addError } = await supabase.rpc("add_registered_member_by_upi", {
+        target_group_id: groupId,
+        target_upi_id: email.trim(),
+      });
 
-      if (!profileFound) {
+      if (addError) throw addError;
+
+      const addedProfile = Array.isArray(data) ? data[0] : null;
+      if (!addedProfile) {
         setError("No registered user found with this UPI ID. You can add them as an offline member instead.");
         setLoading(false);
         return;
       }
-
-      // Check if already in group
-      const alreadyMember = members.some((m) => m.profile_id === profileFound.id);
-      if (alreadyMember) {
-        setError(`${profileFound.name} is already a member of this group.`);
-        setLoading(false);
-        return;
-      }
-
-      // Add to group
-      const { error: insertError } = await supabase.from("group_members").insert({
-        group_id: groupId,
-        profile_id: profileFound.id,
-      });
-
-      if (insertError) throw insertError;
 
       setEmail("");
       setOpenAddDialog(false);
@@ -207,6 +146,11 @@ export default function MembersTab({
   };
 
   const handleDeleteMember = async (memberId: string) => {
+    if (!isGroupCreator) {
+      setConfirmDeleteMember(null);
+      return;
+    }
+
     try {
       const { error: deleteError } = await supabase
         .from("group_members")
@@ -215,6 +159,7 @@ export default function MembersTab({
 
       if (deleteError) throw deleteError;
 
+      setConfirmDeleteMember(null);
       onMembersChange();
       await fetchMembers();
     } catch (err) {
@@ -244,23 +189,24 @@ export default function MembersTab({
 
       <List sx={{ flex: 1, overflowY: "auto" }}>
         {members.map((member) => {
-          const isCurrentUser = member.profile_id === currentUserId;
+          const isCurrentUser = member.profile_id === normalizedCurrentUserId;
           const isRegistered = member.profile_id !== null;
+          const canDeleteMember = isGroupCreator && !isCurrentUser;
           
           return (
             <React.Fragment key={member.id}>
               <ListItem
                 secondaryAction={
-                  !isCurrentUser && (
+                  canDeleteMember ? (
                     <IconButton
                       edge="end"
                       aria-label="delete"
-                      onClick={() => handleDeleteMember(member.id)}
+                      onClick={() => setConfirmDeleteMember(member)}
                       sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
                     >
                       <DeleteIcon />
                     </IconButton>
-                  )
+                  ) : null
                 }
                 sx={{ py: 1.5 }}
               >
@@ -281,6 +227,7 @@ export default function MembersTab({
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
+                  disableTypography
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>
@@ -293,6 +240,10 @@ export default function MembersTab({
                       )}
                       {isRegistered && !isCurrentUser && (
                         <CheckCircleIcon sx={{ color: "secondary.main", fontSize: 14 }} />
+                      )}
+                      {/* Crown = group creator */}
+                      {!!normalizedGroupCreatorId && member.profile_id === normalizedGroupCreatorId && (
+                        <StarsIcon sx={{ fontSize: 14, color: "#f59e0b" }} titleAccess="Group Creator" />
                       )}
                     </Box>
                   }
@@ -404,6 +355,37 @@ export default function MembersTab({
             disabled={loading || (addTab === 0 ? !email.trim() : !offlineName.trim())}
           >
             Add Member
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Delete Member Dialog */}
+      <Dialog
+        open={!!confirmDeleteMember}
+        onClose={() => setConfirmDeleteMember(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Remove Member?</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "text.secondary" }}>
+            Are you sure you want to remove{" "}
+            <strong style={{ color: "white" }}>{confirmDeleteMember?.name}</strong> from this group?
+            {confirmDeleteMember?.profile_id === null && (
+              <> All their expense splits will remain, but they won't be selectable for new expenses.</>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, gap: 1 }}>
+          <Button onClick={() => setConfirmDeleteMember(null)} sx={{ color: "text.secondary" }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => confirmDeleteMember && handleDeleteMember(confirmDeleteMember.id)}
+          >
+            Remove
           </Button>
         </DialogActions>
       </Dialog>

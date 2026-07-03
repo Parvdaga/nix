@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Expense, GroupMember } from "@/types";
 import Box from "@mui/material/Box";
@@ -12,6 +12,10 @@ import CardHeader from "@mui/material/CardHeader";
 import CardContent from "@mui/material/CardContent";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
@@ -108,6 +112,40 @@ const CATEGORY_ICONS: Record<string, { icon: React.ReactNode; color: string }> =
   Others: { icon: <MoreHorizIcon />, color: "#6b7280" },
 };
 
+const DATE_FILTERS = [
+  { value: "all", label: "All dates" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
+  { value: "month", label: "This month" },
+] as const;
+
+type DateFilter = (typeof DATE_FILTERS)[number]["value"];
+
+const parseExpenseDate = (date: string) => {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const formatExpenseDate = (date: string) =>
+  parseExpenseDate(date).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+const formatDateGroupLabel = (date: string) => {
+  const expenseDate = startOfDay(parseExpenseDate(date));
+  const today = startOfDay(new Date());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (expenseDate.getTime() === today.getTime()) return "Today";
+  if (expenseDate.getTime() === yesterday.getTime()) return "Yesterday";
+  return formatExpenseDate(date);
+};
+
 interface ExpensesTabProps {
   groupId: string;
   members: GroupMember[];
@@ -127,6 +165,9 @@ export default function ExpensesTab({
 }: ExpensesTabProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [payerFilter, setPayerFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   useEffect(() => {
     if (groupId) {
@@ -204,6 +245,55 @@ export default function ExpensesTab({
     return member ? member.name : "Unknown Friend";
   };
 
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(expenses.map((expense) => expense.category))).sort(),
+    [expenses]
+  );
+
+  const filteredExpenses = useMemo(() => {
+    const today = startOfDay(new Date());
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    return expenses.filter((expense) => {
+      if (categoryFilter !== "all" && expense.category !== categoryFilter) return false;
+      if (payerFilter !== "all" && expense.payer_member_id !== payerFilter) return false;
+
+      const expenseDate = startOfDay(parseExpenseDate(expense.date));
+      if (dateFilter === "today") return expenseDate.getTime() === today.getTime();
+      if (dateFilter === "week") return expenseDate >= weekStart;
+      if (dateFilter === "month") return expenseDate >= monthStart;
+      return true;
+    });
+  }, [categoryFilter, dateFilter, expenses, payerFilter]);
+
+  const groupedExpenses = useMemo(() => {
+    const groups = new Map<string, Expense[]>();
+
+    filteredExpenses.forEach((expense) => {
+      const currentGroup = groups.get(expense.date) || [];
+      currentGroup.push(expense);
+      groups.set(expense.date, currentGroup);
+    });
+
+    return Array.from(groups.entries()).map(([date, items]) => ({
+      date,
+      label: formatDateGroupLabel(date),
+      total: items.reduce((sum, expense) => sum + Number(expense.amount), 0),
+      expenses: items,
+    }));
+  }, [filteredExpenses]);
+
+  const hasActiveFilters =
+    categoryFilter !== "all" || payerFilter !== "all" || dateFilter !== "all";
+
+  const handleClearFilters = () => {
+    setCategoryFilter("all");
+    setPayerFilter("all");
+    setDateFilter("all");
+  };
+
   return (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
@@ -221,8 +311,97 @@ export default function ExpensesTab({
         </Button>
       </Box>
 
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 1,
+          mb: 2,
+        }}
+      >
+        <FormControl size="small">
+          <InputLabel id="expense-date-filter-label">Date</InputLabel>
+          <Select
+            labelId="expense-date-filter-label"
+            label="Date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilter)}
+            sx={{ borderRadius: 3 }}
+          >
+            {DATE_FILTERS.map((filter) => (
+              <MenuItem key={filter.value} value={filter.value}>
+                {filter.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small">
+          <InputLabel id="expense-category-filter-label">Category</InputLabel>
+          <Select
+            labelId="expense-category-filter-label"
+            label="Category"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            sx={{ borderRadius: 3 }}
+          >
+            <MenuItem value="all">All</MenuItem>
+            {categoryOptions.map((category) => (
+              <MenuItem key={category} value={category}>
+                {category}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small">
+          <InputLabel id="expense-payer-filter-label">Payer</InputLabel>
+          <Select
+            labelId="expense-payer-filter-label"
+            label="Payer"
+            value={payerFilter}
+            onChange={(e) => setPayerFilter(e.target.value)}
+            sx={{ borderRadius: 3 }}
+          >
+            <MenuItem value="all">All</MenuItem>
+            {members.map((member) => (
+              <MenuItem key={member.id} value={member.id}>
+                {member.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {hasActiveFilters && (
+        <Button
+          variant="text"
+          size="small"
+          onClick={handleClearFilters}
+          sx={{ alignSelf: "flex-start", color: "text.secondary", mb: 1, px: 0 }}
+        >
+          Clear filters
+        </Button>
+      )}
+
       <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
-        {expenses.map((expense) => {
+        {groupedExpenses.map((group) => (
+          <Box key={group.date} sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 0.5 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 800 }}>
+                  {group.label}
+                </Typography>
+                <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
+                  {group.expenses.length} expense{group.expenses.length === 1 ? "" : "s"}
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: "text.primary", fontWeight: 800 }}>
+                &#8377;{group.total.toFixed(2).replace(/\.00$/, "")}
+              </Typography>
+            </Box>
+
+            {group.expenses.map((expense) => {
           const cat = CATEGORY_ICONS[expense.category] || CATEGORY_ICONS.Others;
           const isExpanded = expandedId === expense.id;
           const payerName = getMemberName(expense.payer_member_id);
@@ -315,13 +494,24 @@ export default function ExpensesTab({
               </Collapse>
             </Card>
           );
-        })}
+            })}
+          </Box>
+        ))}
 
         {expenses.length === 0 && (
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyCenter: "center", py: 8, gap: 1.5 }}>
             <CategoryIcon sx={{ fontSize: 48, color: "rgba(255, 255, 255, 0.06)" }} />
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               No expenses recorded yet.
+            </Typography>
+          </Box>
+        )}
+
+        {expenses.length > 0 && groupedExpenses.length === 0 && (
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 8, gap: 1.5 }}>
+            <CategoryIcon sx={{ fontSize: 48, color: "rgba(255, 255, 255, 0.06)" }} />
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              No expenses match these filters.
             </Typography>
           </Box>
         )}
