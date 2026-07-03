@@ -325,10 +325,9 @@ export default function SettingsTab({
         </Alert>
       )}
 
-      {/* Profile Card */}
-      <Card variant="outlined" sx={{ borderRadius: 4 }}>
-        <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
+      {/* Profile Section */}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
             My Account
           </Typography>
 
@@ -489,14 +488,11 @@ export default function SettingsTab({
                 Edit Profile
               </Button>
             </Box>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </Box>
 
-      {/* Data Backup & Portability Card */}
       {groupId && (
-        <Card variant="outlined" sx={{ borderRadius: 4 }}>
-          <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {editingGroupName ? (
               <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                 <TextField
@@ -598,8 +594,7 @@ export default function SettingsTab({
                 Export Group Backup (.json)
               </Button>
             </Box>
-          </CardContent>
-        </Card>
+        </Box>
       )}
 
       {/* Logout button */}
