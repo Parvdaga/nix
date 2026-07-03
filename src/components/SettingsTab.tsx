@@ -452,21 +452,16 @@ export default function SettingsTab({
             </Box>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <AccountCircleIcon sx={{ color: "text.secondary", fontSize: 24 }} />
-                <Box>
-                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
-                    Display Name
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                    {profile.name}
-                  </Typography>
-                </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
+                  Display Name
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {profile.name}
+                </Typography>
               </Box>
 
-              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-                <ContactlessIcon sx={{ color: "text.secondary", fontSize: 24, mt: 0.5 }} />
-                <Box sx={{ flex: 1 }}>
+              <Box>
                   <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                     Registered UPI Handles
                   </Typography>
@@ -483,7 +478,6 @@ export default function SettingsTab({
                       Not configured
                     </Typography>
                   )}
-                </Box>
               </Box>
 
               <Button
