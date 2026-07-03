@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { GroupMember, CategoryOption } from "@/types";
+import { GroupMember, CategoryOption, Expense } from "@/types";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -76,6 +76,7 @@ interface ExpenseDialogProps {
   members: GroupMember[];
   currentUserId: string;
   onSave: () => void;
+  editingExpense?: Expense | null;
 }
 
 export default function ExpenseDialog({
@@ -85,6 +86,7 @@ export default function ExpenseDialog({
   members,
   currentUserId,
   onSave,
+  editingExpense,
 }: ExpenseDialogProps) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -101,22 +103,62 @@ export default function ExpenseDialog({
 
   // Initialize defaults
   useEffect(() => {
-    if (members.length > 0) {
-      // Set current user (or first member) as default payer
-      const userMember = members.find((m) => m.profile_id === currentUserId);
-      setPayerId(userMember ? userMember.id : members[0].id);
+    if (open) {
+      if (editingExpense) {
+        setTitle(editingExpense.title);
+        setAmount(String(editingExpense.amount));
+        setCategory(editingExpense.category);
+        setDate(editingExpense.date);
+        setPayerId(editingExpense.payer_member_id);
 
-      // Check all members for equal split by default
-      const defaultChecked: Record<string, boolean> = {};
-      const defaultShares: Record<string, string> = {};
-      members.forEach((m) => {
-        defaultChecked[m.id] = true;
-        defaultShares[m.id] = "";
-      });
-      setEqualChecked(defaultChecked);
-      setCustomShares(defaultShares);
+        const splitsList = editingExpense.expense_splits || [];
+        const initialChecked: Record<string, boolean> = {};
+        const initialShares: Record<string, string> = {};
+
+        // Detect if it was custom
+        let isCustom = false;
+        if (splitsList.length > 0) {
+          const firstShare = splitsList[0].amount_owed;
+          const isAllEqual = splitsList.every((s) => Math.abs(s.amount_owed - firstShare) < 0.1);
+          isCustom = !isAllEqual;
+
+          members.forEach((m) => {
+            const split = splitsList.find((s) => s.member_id === m.id);
+            initialChecked[m.id] = !!split;
+            initialShares[m.id] = split ? String(split.amount_owed) : "";
+          });
+        } else {
+          members.forEach((m) => {
+            initialChecked[m.id] = true;
+            initialShares[m.id] = "";
+          });
+        }
+
+        setEqualChecked(initialChecked);
+        setCustomShares(initialShares);
+        setSplitTab(isCustom ? 1 : 0);
+      } else {
+        setTitle("");
+        setAmount("");
+        setCategory("Food");
+        setDate(new Date().toISOString().split("T")[0]);
+        if (members.length > 0) {
+          const userMember = members.find((m) => m.profile_id === currentUserId);
+          setPayerId(userMember ? userMember.id : members[0].id);
+
+          const defaultChecked: Record<string, boolean> = {};
+          const defaultShares: Record<string, string> = {};
+          members.forEach((m) => {
+            defaultChecked[m.id] = true;
+            defaultShares[m.id] = "";
+          });
+          setEqualChecked(defaultChecked);
+          setCustomShares(defaultShares);
+        }
+        setSplitTab(0);
+      }
     }
-  }, [members, currentUserId, open]);
+  }, [members, currentUserId, open, editingExpense]);
 
   const parsedAmount = parseFloat(amount) || 0;
 
@@ -207,44 +249,75 @@ export default function ExpenseDialog({
     setLoading(true);
 
     try {
-      // 1. Create Expense
-      const { data: expenseData, error: expenseError } = await supabase
-        .from("expenses")
-        .insert({
-          group_id: groupId,
-          title: title.trim(),
-          amount: parsedAmount,
-          payer_member_id: payerId,
-          category,
-          date,
-        })
-        .select()
-        .single();
+      if (editingExpense) {
+        // Update mode
+        const { error: expenseError } = await supabase
+          .from("expenses")
+          .update({
+            title: title.trim(),
+            amount: parsedAmount,
+            payer_member_id: payerId,
+            category,
+            date,
+          })
+          .eq("id", editingExpense.id);
 
-      if (expenseError) throw expenseError;
+        if (expenseError) throw expenseError;
 
-      // 2. Insert splits
-      const splitPayload = splits.map((s) => ({
-        expense_id: expenseData.id,
-        member_id: s.member_id,
-        amount_owed: s.amount_owed,
-      }));
+        // Delete old splits
+        const { error: deleteSplitsError } = await supabase
+          .from("expense_splits")
+          .delete()
+          .eq("expense_id", editingExpense.id);
 
-      const { error: splitError } = await supabase
-        .from("expense_splits")
-        .insert(splitPayload);
+        if (deleteSplitsError) throw deleteSplitsError;
 
-      if (splitError) throw splitError;
+        // Insert new splits
+        const splitPayload = splits.map((s) => ({
+          expense_id: editingExpense.id,
+          member_id: s.member_id,
+          amount_owed: s.amount_owed,
+        }));
 
-      // Reset form
-      setTitle("");
-      setAmount("");
-      setCategory("Food");
-      setDate(new Date().toISOString().split("T")[0]);
+        const { error: splitError } = await supabase
+          .from("expense_splits")
+          .insert(splitPayload);
+
+        if (splitError) throw splitError;
+      } else {
+        // Insert mode
+        const { data: expenseData, error: expenseError } = await supabase
+          .from("expenses")
+          .insert({
+            group_id: groupId,
+            title: title.trim(),
+            amount: parsedAmount,
+            payer_member_id: payerId,
+            category,
+            date,
+          })
+          .select()
+          .single();
+
+        if (expenseError) throw expenseError;
+
+        const splitPayload = splits.map((s) => ({
+          expense_id: expenseData.id,
+          member_id: s.member_id,
+          amount_owed: s.amount_owed,
+        }));
+
+        const { error: splitError } = await supabase
+          .from("expense_splits")
+          .insert(splitPayload);
+
+        if (splitError) throw splitError;
+      }
+
       onSave();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to add expense.");
+      setError(err.message || "Failed to save expense.");
     } finally {
       setLoading(false);
     }
@@ -252,7 +325,7 @@ export default function ExpenseDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle sx={{ fontWeight: 800 }}>Add Expense</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 800 }}>{editingExpense ? "Edit Expense" : "Add Expense"}</DialogTitle>
       
       <Box sx={{ borderBottom: 1, borderColor: "rgba(255,255,255,0.06)" }}>
         <Tabs value={splitTab} onChange={(_e, v) => setSplitTab(v)} variant="fullWidth">

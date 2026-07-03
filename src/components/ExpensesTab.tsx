@@ -13,6 +13,7 @@ import CardContent from "@mui/material/CardContent";
 import Collapse from "@mui/material/Collapse";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -113,6 +114,7 @@ interface ExpensesTabProps {
   refreshTrigger: number;
   onExpensesChange: () => void;
   onOpenExpenseDialog: () => void;
+  onEditExpense: (expense: Expense) => void;
 }
 
 export default function ExpensesTab({
@@ -121,6 +123,7 @@ export default function ExpensesTab({
   refreshTrigger,
   onExpensesChange,
   onOpenExpenseDialog,
+  onEditExpense,
 }: ExpensesTabProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -285,7 +288,19 @@ export default function ExpensesTab({
                     })}
                   </Box>
 
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 1.5 }}>
+                    <Button
+                      variant="text"
+                      color="primary"
+                      size="small"
+                      startIcon={<EditIcon />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditExpense(expense);
+                      }}
+                    >
+                      Edit Expense
+                    </Button>
                     <Button
                       variant="text"
                       color="error"

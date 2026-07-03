@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { hashPin } from "@/lib/security/crypto";
 import { buildUpiLink } from "@/lib/payments/upi";
@@ -32,6 +32,8 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import LockIcon from "@mui/icons-material/Lock";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
+import EditIcon from "@mui/icons-material/Edit";
+
 interface SettingsTabProps {
   profile: Profile;
   groupName: string | null;
@@ -40,6 +42,7 @@ interface SettingsTabProps {
   members: GroupMember[];
   onProfileUpdated: () => void;
   onLogout: () => void;
+  onGroupUpdated?: () => void;
 }
 
 export default function SettingsTab({
@@ -51,6 +54,7 @@ export default function SettingsTab({
   expenses,
   onProfileUpdated,
   onLogout,
+  onGroupUpdated,
 }: SettingsTabProps & { expenses: Expense[] }) {
   // Profile edit states
   const [name, setName] = useState(profile.name);
@@ -75,6 +79,15 @@ export default function SettingsTab({
   // General messages
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Group name edit states
+  const [groupNameInput, setGroupNameInput] = useState(groupName || "");
+  const [editingGroupName, setEditingGroupName] = useState(false);
+  const [groupSaveLoading, setGroupSaveLoading] = useState(false);
+
+  useEffect(() => {
+    setGroupNameInput(groupName || "");
+  }, [groupName]);
 
   const handleStartEdit = () => {
     setSuccessMsg(null);
@@ -190,6 +203,28 @@ export default function SettingsTab({
       setErrorMsg(err.message || "Failed to update profile.");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleSaveGroupName = async () => {
+    if (!groupNameInput.trim() || !groupId) return;
+    setGroupSaveLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { error } = await supabase
+        .from("groups")
+        .update({ name: groupNameInput.trim() })
+        .eq("id", groupId);
+
+      if (error) throw error;
+      setEditingGroupName(false);
+      setSuccessMsg("Group name updated successfully.");
+      if (onGroupUpdated) onGroupUpdated();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to update group name.");
+    } finally {
+      setGroupSaveLoading(false);
     }
   };
 
@@ -468,9 +503,47 @@ export default function SettingsTab({
       {groupId && (
         <Card variant="outlined" sx={{ borderRadius: 4 }}>
           <CardContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
-              Active Group: {groupName}
-            </Typography>
+            {editingGroupName ? (
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                <TextField
+                  size="small"
+                  label="Rename Group"
+                  value={groupNameInput}
+                  onChange={(e) => setGroupNameInput(e.target.value)}
+                  disabled={groupSaveLoading}
+                  fullWidth
+                />
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleSaveGroupName}
+                  disabled={groupSaveLoading || !groupNameInput.trim()}
+                  sx={{ minWidth: 0, px: 2 }}
+                >
+                  Save
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setEditingGroupName(false);
+                    setGroupNameInput(groupName || "");
+                  }}
+                  disabled={groupSaveLoading}
+                  sx={{ color: "text.secondary", minWidth: 0, px: 1.5 }}
+                >
+                  Cancel
+                </Button>
+              </Box>
+            ) : (
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "primary.main" }}>
+                  Active Group: {groupName}
+                </Typography>
+                <IconButton size="small" onClick={() => setEditingGroupName(true)}>
+                  <EditIcon sx={{ fontSize: 16, color: "primary.main" }} />
+                </IconButton>
+              </Box>
+            )}
 
             {groupInviteCode && (
               <Box

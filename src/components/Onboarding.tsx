@@ -105,27 +105,6 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
 
       if (profileError) throw profileError;
 
-      // Automatically create a default group to give the user a good start!
-      await supabase.from("groups").insert({
-        name: "My First Group 🏠",
-        created_by: userId,
-      }).then(async ({ data: grpData }) => {
-        // Find the newly created group to add the user as member
-        const { data: fetchGrp } = await supabase
-          .from("groups")
-          .select("id")
-          .eq("created_by", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (fetchGrp) {
-          await supabase.from("group_members").insert({
-            group_id: fetchGrp.id,
-            profile_id: userId,
-          });
-        }
-      });
 
       onComplete();
     } catch (err: any) {

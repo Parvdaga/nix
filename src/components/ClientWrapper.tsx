@@ -111,7 +111,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
       {/* Outer wrapper: Centered on desktop, full-width on mobile */}
       <Box
         sx={{
-          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           flexDirection: { xs: "column", md: "row" },
           alignItems: "center",
@@ -183,7 +183,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
           sx={{
             position: "relative",
             width: { xs: "100%", md: 390 },
-            height: { xs: "100vh", md: 844 },
+            height: { xs: "100dvh", md: 844 },
             borderRadius: { xs: 0, md: "50px" },
             border: { xs: "none", md: "12px solid #1f2937" },
             boxShadow: {

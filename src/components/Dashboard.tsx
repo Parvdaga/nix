@@ -49,6 +49,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   // States to trigger refreshes
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -172,6 +173,17 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
       setActiveGroupInviteCode(data.invite_code);
     }
     setRefreshCounter((c) => c + 1);
+  };
+
+  const handleGroupUpdated = async () => {
+    if (activeGroupId) {
+      const { data } = await supabase.from("groups").select("name, invite_code").eq("id", activeGroupId).single();
+      if (data) {
+        setActiveGroupName(data.name);
+        setActiveGroupInviteCode(data.invite_code);
+      }
+      setRefreshCounter((c) => c + 1);
+    }
   };
 
   const triggerRefresh = () => {
@@ -432,7 +444,14 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
                 members={members}
                 refreshTrigger={refreshCounter}
                 onExpensesChange={triggerRefresh}
-                onOpenExpenseDialog={() => setExpenseDialogOpen(true)}
+                onOpenExpenseDialog={() => {
+                  setEditingExpense(null);
+                  setExpenseDialogOpen(true);
+                }}
+                onEditExpense={(expense) => {
+                  setEditingExpense(expense);
+                  setExpenseDialogOpen(true);
+                }}
               />
             )}
 
@@ -460,6 +479,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
                 expenses={expenses}
                 onProfileUpdated={onProfileUpdated}
                 onLogout={onLogout}
+                onGroupUpdated={handleGroupUpdated}
               />
             )}
           </>
@@ -479,11 +499,15 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
       {activeGroupId && (
         <ExpenseDialog
           open={expenseDialogOpen}
-          onClose={() => setExpenseDialogOpen(false)}
+          onClose={() => {
+            setExpenseDialogOpen(false);
+            setEditingExpense(null);
+          }}
           groupId={activeGroupId}
           members={members}
           currentUserId={profile.id}
           onSave={triggerRefresh}
+          editingExpense={editingExpense}
         />
       )}
 
