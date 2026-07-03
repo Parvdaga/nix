@@ -6,6 +6,14 @@ export const metadata: Metadata = {
   title: "Nix - Skip intermediate debts, pay directly",
   description: "Tired of Splitwise bugs? Nix calculates the net balance between friends and simplifies transactions. Pay directly via UPI deep links and QR codes.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,6 +39,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* Favicon & App Icons */}
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+        <link rel="shortcut icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         {/* PWA mobile capability tags */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
