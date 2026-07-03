@@ -28,6 +28,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import HandshakeIcon from "@mui/icons-material/Handshake";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AddIcon from "@mui/icons-material/Add";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import Button from "@mui/material/Button";
@@ -224,38 +225,36 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
 
   return (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", bgcolor: "#090c15" }}>
-      {/* Header bar in modern floating capsule shape */}
-      <AppBar
-        position="static"
-        sx={{
-          mx: 2,
-          mt: 2,
-          mb: 1.5,
-          width: "auto",
-          borderRadius: "32px",
-          bgcolor: "rgba(18, 24, 41, 0.65)",
-          backdropFilter: "blur(16px)",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.2)",
-          backgroundImage: "none",
-        }}
-      >
-        <Toolbar sx={{ justifyContent: "space-between", minHeight: "52px !important", px: "12px !important" }}>
-          <IconButton edge="start" color="inherit" onClick={() => setGroupDrawerOpen(true)} sx={{ p: 1 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.primary" }}>
-            {activeGroupName || "Nix Dashboard"}
+      {/* Top Header Row (No AppBar) */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2.5, pt: 2, pb: 1, flexShrink: 0 }}>
+        {/* Top Left: Logo */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <img src="/nix_logo.png" alt="Nix Logo" style={{ width: 26, height: 26, borderRadius: "6px" }} />
+          <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "Outfit", color: "text.primary", letterSpacing: -0.5 }}>
+            Nix
           </Typography>
-          {activeGroupId ? (
-            <IconButton color="primary" onClick={() => setExpenseDialogOpen(true)} sx={{ p: 1 }}>
-              <AddIcon sx={{ fontSize: 22 }} />
-            </IconButton>
-          ) : (
-            <Box sx={{ width: 38 }} />
-          )}
-        </Toolbar>
-      </AppBar>
+        </Box>
+
+        {/* Top Right: Switch Group Pill Button */}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => setGroupDrawerOpen(true)}
+          startIcon={<SwapHorizIcon sx={{ fontSize: 16 }} />}
+          sx={{
+            borderRadius: "20px",
+            borderColor: "rgba(255,255,255,0.08)",
+            color: "text.secondary",
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.8rem",
+            px: 2,
+            "&:hover": { borderColor: "primary.main", color: "primary.main", bgcolor: "rgba(99,102,241,0.04)" },
+          }}
+        >
+          Switch Group
+        </Button>
+      </Box>
 
       {/* Main Viewport Content */}
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -288,9 +287,14 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
             {activeTab === 0 && (
               // TAB 0: HOME
               <Box sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2.5, overflowY: "auto" }}>
-                <Typography variant="h5" sx={{ fontWeight: 800, mt: 1 }}>
-                  Hey, {profile.name.split(" ")[0]} ⚡
-                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" sx={{ color: "primary.main", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", display: "block" }}>
+                    {activeGroupName || "No Active Group"}
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>
+                    Hey, {profile.name.split(" ")[0]} ⚡
+                  </Typography>
+                </Box>
 
                 {/* Balances Board Grid */}
                 <Grid container spacing={2}>
