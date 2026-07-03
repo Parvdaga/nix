@@ -146,10 +146,14 @@ create policy "Members can view other members in their groups"
 
 create policy "Members can add people to their groups" 
   on public.group_members for insert 
-  with check (public.is_group_member(group_id, auth.uid()) or exists (
-    -- Allow the group creator to add initial members upon group creation
-    select 1 from public.groups where id = group_id and created_by = auth.uid()
-  ));
+  with check (
+    auth.uid() = profile_id
+    or public.is_group_member(group_id, auth.uid()) 
+    or exists (
+      -- Allow the group creator to add initial members upon group creation
+      select 1 from public.groups where id = group_id and created_by = auth.uid()
+    )
+  );
 
 create policy "Members can update group membership details" 
   on public.group_members for update 
