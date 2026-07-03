@@ -232,7 +232,10 @@ grant execute on function public.join_group_by_invite_code(text) to authenticate
 -- Groups Policies
 create policy "Users can view groups they belong to" 
   on public.groups for select 
-  using (public.is_group_member(id, auth.uid()));
+  using (
+    public.is_group_member(id, auth.uid())
+    or auth.uid() = created_by
+  );
 
 create policy "Any registered user can create a group" 
   on public.groups for insert 

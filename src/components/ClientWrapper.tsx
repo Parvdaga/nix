@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
@@ -104,6 +104,18 @@ const darkTheme = createTheme({
 });
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div style={{ backgroundColor: "#090c15", minHeight: "100vh" }} />
+    );
+  }
+
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
