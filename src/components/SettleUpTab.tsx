@@ -6,6 +6,7 @@ import { buildUpiLink } from "@/lib/payments/upi";
 import { hashPin } from "@/lib/security/crypto";
 import { supabase } from "@/lib/supabaseClient";
 import { GroupMember, Expense, Transaction } from "@/types";
+import { triggerPushNotifications } from "@/lib/pushNotifications";
 import QRCode from "qrcode";
 import confetti from "canvas-confetti";
 import Box from "@mui/material/Box";
@@ -26,6 +27,7 @@ import MenuItem from "@mui/material/MenuItem";
 
 interface SettleUpTabProps {
   groupId: string;
+  groupName: string;
   members: GroupMember[];
   expenses: Expense[];
   currentUserId: string;
@@ -36,6 +38,7 @@ interface SettleUpTabProps {
 
 export default function SettleUpTab({
   groupId,
+  groupName,
   members,
   expenses,
   currentUserId,
@@ -177,6 +180,14 @@ export default function SettleUpTab({
       });
 
       if (splitError) throw splitError;
+
+      // Trigger push notification to other group members
+      triggerPushNotifications(
+        groupId,
+        `Debt Settled in ${groupName}`,
+        `${selectedTx.fromMember.name} settled ₹${selectedTx.amount} with ${selectedTx.toMember.name}`,
+        currentUserId
+      );
 
       // Blast Confetti!
       confetti({

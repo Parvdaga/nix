@@ -22,6 +22,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CategoryIcon from "@mui/icons-material/Category";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { styled } from "@mui/material/styles";
 import Avatar from "@mui/material/Avatar";
 import FastfoodIcon from "@mui/icons-material/Fastfood";
@@ -305,7 +306,7 @@ export default function ExpensesTab({
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-          Expense Logs
+          Transactions
         </Typography>
         <Button
           variant="contained"
@@ -409,7 +410,10 @@ export default function ExpensesTab({
             </Box>
 
             {group.expenses.map((expense) => {
-          const cat = CATEGORY_ICONS[expense.category] || CATEGORY_ICONS.Others;
+          const isSettlement = expense.title.startsWith("Settled:");
+          const cat = isSettlement
+            ? { icon: <SwapHorizIcon />, color: "#10b981" }
+            : (CATEGORY_ICONS[expense.category] || CATEGORY_ICONS.Others);
           const isExpanded = expandedId === expense.id;
           const payerName = getMemberName(expense.payer_member_id);
           
@@ -436,7 +440,7 @@ export default function ExpensesTab({
                     {expense.title}
                   </Typography>
                   <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                    Paid by {payerName} • {new Date(expense.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    {isSettlement ? "Settlement" : `Paid by ${payerName}`} • {new Date(expense.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </Typography>
                 </Box>
 
@@ -454,40 +458,46 @@ export default function ExpensesTab({
                 <CardContent sx={{ pt: 0, px: 3, pb: 2.5 }}>
                   <Divider sx={{ mb: 2, borderColor: "rgba(255, 255, 255, 0.05)" }} />
                   
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", display: "block", mb: 1 }}>
-                    Split breakdown:
-                  </Typography>
-                  
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    {expense.expense_splits?.map((split) => {
-                      const name = getMemberName(split.member_id);
-                      return (
-                        <Box key={split.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                            {name}
-                          </Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: "text.primary" }}>
-                            ₹{Number(split.amount_owed).toFixed(2).replace(/\.00$/, "")}
-                          </Typography>
-                        </Box>
-                      );
-                    })}
-                  </Box>
+                  {!isSettlement && (
+                    <>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", display: "block", mb: 1 }}>
+                        Split breakdown:
+                      </Typography>
+                      
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
+                        {expense.expense_splits?.map((split) => {
+                          const name = getMemberName(split.member_id);
+                          return (
+                            <Box key={split.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                {name}
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "text.primary" }}>
+                                ₹{Number(split.amount_owed).toFixed(2).replace(/\.00$/, "")}
+                              </Typography>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </>
+                  )}
 
                   {expense.created_by === currentUserId && (
-                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 1.5 }}>
-                      <Button
-                        variant="text"
-                        color="primary"
-                        size="small"
-                        startIcon={<EditIcon />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditExpense(expense);
-                        }}
-                      >
-                        Edit Expense
-                      </Button>
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: isSettlement ? 0 : 2, gap: 1.5 }}>
+                      {!isSettlement && (
+                        <Button
+                          variant="text"
+                          color="primary"
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditExpense(expense);
+                          }}
+                        >
+                          Edit Expense
+                        </Button>
+                      )}
                       <Button
                         variant="text"
                         color="error"
@@ -495,7 +505,7 @@ export default function ExpensesTab({
                         startIcon={<DeleteIcon />}
                         onClick={(e) => handleDeleteExpense(expense.id, e)}
                       >
-                        Delete Expense
+                        {isSettlement ? "Delete Settlement" : "Delete Expense"}
                       </Button>
                     </Box>
                   )}

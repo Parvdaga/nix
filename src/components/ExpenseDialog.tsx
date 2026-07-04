@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { GroupMember, CategoryOption, Expense } from "@/types";
 import { useNotification } from "./NotificationProvider";
+import { triggerPushNotifications } from "@/lib/pushNotifications";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -74,6 +75,7 @@ interface ExpenseDialogProps {
   open: boolean;
   onClose: () => void;
   groupId: string;
+  groupName: string;
   members: GroupMember[];
   currentUserId: string;
   onSave: () => void;
@@ -84,6 +86,7 @@ export default function ExpenseDialog({
   open,
   onClose,
   groupId,
+  groupName,
   members,
   currentUserId,
   onSave,
@@ -288,6 +291,15 @@ export default function ExpenseDialog({
         if (splitError) throw splitError;
         
         showNotification("Expense updated successfully", "success");
+
+        // Trigger push notification to other group members
+        const editorName = members.find((m) => m.profile_id === currentUserId)?.name || "A friend";
+        triggerPushNotifications(
+          groupId,
+          `Expense Updated in ${groupName}`,
+          `${editorName} updated "${title.trim()}" to ₹${parsedAmount}`,
+          currentUserId
+        );
       } else {
         // Insert mode
         const { data: expenseData, error: expenseError } = await supabase
@@ -319,6 +331,15 @@ export default function ExpenseDialog({
         if (splitError) throw splitError;
 
         showNotification("Expense added successfully", "success");
+
+        // Trigger push notification to other group members
+        const creatorName = members.find((m) => m.profile_id === currentUserId)?.name || "A friend";
+        triggerPushNotifications(
+          groupId,
+          `New Expense in ${groupName}`,
+          `${creatorName} added "${title.trim()}" of ₹${parsedAmount}`,
+          currentUserId
+        );
       }
 
       onSave();

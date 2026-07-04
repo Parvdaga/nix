@@ -446,6 +446,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
               // TAB 3: SETTLE UP
               <SettleUpTab
                 groupId={activeGroupId}
+                groupName={activeGroupName || "Group"}
                 members={members}
                 expenses={expenses}
                 currentUserId={profile.id}
@@ -491,6 +492,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
             setEditingExpense(null);
           }}
           groupId={activeGroupId}
+          groupName={activeGroupName || "Group"}
           members={members}
           currentUserId={profile.id}
           onSave={triggerRefresh}
@@ -515,7 +517,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
         >
           <BottomNavigationAction label="Home" icon={<HomeIcon />} />
           <BottomNavigationAction label="Members" icon={<PeopleIcon />} />
-          <BottomNavigationAction label="Expenses" icon={<ReceiptLongIcon />} />
+          <BottomNavigationAction label="Transactions" icon={<ReceiptLongIcon />} />
           <BottomNavigationAction label="Settle" icon={<HandshakeIcon />} />
           <BottomNavigationAction label="Settings" icon={<SettingsIcon />} />
         </BottomNavigation>

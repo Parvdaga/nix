@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useNotification } from "./NotificationProvider";
+import { requestNotificationPermission } from "@/lib/pushNotifications";
+import Switch from "@mui/material/Switch";
 import { hashPin } from "@/lib/security/crypto";
 import { buildUpiLink } from "@/lib/payments/upi";
 import { simplifyDebts } from "@/lib/utils/split";
@@ -58,6 +60,36 @@ export default function SettingsTab({
   onGroupUpdated,
 }: SettingsTabProps & { expenses: Expense[] }) {
   const { showNotification } = useNotification();
+
+  // Push Notifications state and handler
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPushEnabled(Notification.permission === "granted");
+    }
+  }, []);
+
+  const handleTogglePush = async () => {
+    try {
+      if (pushEnabled) {
+        const { error } = await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("profile_id", profile.id);
+        if (error) throw error;
+        setPushEnabled(false);
+        showNotification("Push notifications disabled.", "info");
+      } else {
+        await requestNotificationPermission(profile.id);
+        setPushEnabled(true);
+        showNotification("Push notifications enabled successfully!", "success");
+      }
+    } catch (err: any) {
+      showNotification(err.message || "Failed to update notification settings.", "error");
+    }
+  };
+
   // Profile edit states
   const [name, setName] = useState(profile.name);
   const [upiIds, setUpiIds] = useState<string[]>(
@@ -491,6 +523,33 @@ export default function SettingsTab({
               >
                 Edit Profile
               </Button>
+
+              <Box
+                sx={{
+                  mt: 2.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  bgcolor: "rgba(255,255,255,0.02)",
+                  p: 2,
+                  borderRadius: 3.5,
+                  border: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <Box sx={{ pr: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Push Notifications
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
+                    Get notified when friends log expenses or settle up.
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={pushEnabled}
+                  onChange={handleTogglePush}
+                  color="primary"
+                />
+              </Box>
             </Box>
         )}
       </Box>

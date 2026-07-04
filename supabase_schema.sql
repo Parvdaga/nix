@@ -342,3 +342,32 @@ create policy "Members can delete splits"
         and public.is_group_member(expenses.group_id, auth.uid())
     )
   );
+
+
+-- 6. Create Push Subscriptions Table
+create table public.push_subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  profile_id uuid references public.profiles(id) on delete cascade not null,
+  subscription jsonb not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  constraint unique_profile_subscription unique (profile_id, subscription)
+);
+
+alter table public.push_subscriptions enable row level security;
+
+-- Policies for Push Subscriptions
+create policy "Users can manage their own subscriptions"
+  on public.push_subscriptions for all
+  using (auth.uid() = profile_id);
+
+create policy "Users can view subscriptions of group members"
+  on public.push_subscriptions for select
+  using (
+    exists (
+      select 1 
+      from public.group_members gm1
+      join public.group_members gm2 on gm2.group_id = gm1.group_id
+      where gm1.profile_id = auth.uid() 
+        and gm2.profile_id = push_subscriptions.profile_id
+    )
+  );
