@@ -428,6 +428,7 @@ export default function Dashboard({ profile, onLogout, onProfileUpdated }: Dashb
               <ExpensesTab
                 groupId={activeGroupId}
                 members={members}
+                currentUserId={profile.id}
                 refreshTrigger={refreshCounter}
                 onExpensesChange={triggerRefresh}
                 onOpenExpenseDialog={() => {

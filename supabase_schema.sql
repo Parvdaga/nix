@@ -79,6 +79,7 @@ create table public.expenses (
   payer_member_id uuid references public.group_members(id) on delete cascade not null,
   category text not null,
   date date default current_date not null,
+  created_by uuid references public.profiles(id) on delete cascade not null default auth.uid(),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -288,13 +289,13 @@ create policy "Members can log expenses"
   on public.expenses for insert 
   with check (public.is_group_member(group_id, auth.uid()));
 
-create policy "Members can update expenses" 
+create policy "Users can update their own created expenses" 
   on public.expenses for update 
-  using (public.is_group_member(group_id, auth.uid()));
+  using (auth.uid() = created_by);
 
-create policy "Members can delete expenses" 
+create policy "Users can delete their own created expenses" 
   on public.expenses for delete 
-  using (public.is_group_member(group_id, auth.uid()));
+  using (auth.uid() = created_by);
 
 
 -- Expense Splits Policies

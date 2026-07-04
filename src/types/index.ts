@@ -38,6 +38,7 @@ export interface Expense {
   payer_member_id: string; // references group_members.id
   category: string;
   date: string;
+  created_by: string;
   created_at: string;
   expense_splits?: ExpenseSplit[];
 }

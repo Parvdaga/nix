@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useNotification } from "./NotificationProvider";
 import { hashPin } from "@/lib/security/crypto";
 import { buildUpiLink } from "@/lib/payments/upi";
 import { simplifyDebts } from "@/lib/utils/split";
@@ -56,6 +57,7 @@ export default function SettingsTab({
   onLogout,
   onGroupUpdated,
 }: SettingsTabProps & { expenses: Expense[] }) {
+  const { showNotification } = useNotification();
   // Profile edit states
   const [name, setName] = useState(profile.name);
   const [upiIds, setUpiIds] = useState<string[]>(
@@ -197,10 +199,11 @@ export default function SettingsTab({
       if (error) throw error;
 
       setEditing(false);
-      setSuccessMsg("Profile details updated successfully.");
+      showNotification("Profile details updated successfully", "success");
       onProfileUpdated();
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to update profile.");
+      showNotification(err.message || "Failed to update profile.", "error");
     } finally {
       setSaveLoading(false);
     }
@@ -219,10 +222,11 @@ export default function SettingsTab({
 
       if (error) throw error;
       setEditingGroupName(false);
-      setSuccessMsg("Group name updated successfully.");
+      showNotification("Group name updated successfully", "success");
       if (onGroupUpdated) onGroupUpdated();
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to update group name.");
+      showNotification(err.message || "Failed to update group name.", "error");
     } finally {
       setGroupSaveLoading(false);
     }
@@ -261,10 +265,10 @@ export default function SettingsTab({
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      setSuccessMsg("Group data exported successfully.");
+      showNotification("Group data exported successfully", "success");
     } catch (err) {
       console.error(err);
-      setErrorMsg("Failed to export data.");
+      showNotification("Failed to export data", "error");
     }
   };
 
@@ -300,10 +304,10 @@ export default function SettingsTab({
       text += `_Settled with Nix App ⚡_`;
 
       navigator.clipboard.writeText(text);
-      setSuccessMsg("WhatsApp share text copied to clipboard!");
+      showNotification("WhatsApp share text copied to clipboard!", "success");
     } catch (err) {
       console.error(err);
-      setErrorMsg("Failed to generate share summary.");
+      showNotification("Failed to generate share summary", "error");
     }
   };
 
@@ -557,7 +561,7 @@ export default function SettingsTab({
                     size="small"
                     onClick={() => {
                       navigator.clipboard.writeText(groupInviteCode.toUpperCase());
-                      setSuccessMsg("Invite code copied to clipboard!");
+                      showNotification("Invite code copied to clipboard!", "success");
                     }}
                     startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
                     sx={{ minWidth: 0, px: 1.5, py: 0.5 }}

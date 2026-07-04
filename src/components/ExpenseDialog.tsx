@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { GroupMember, CategoryOption, Expense } from "@/types";
+import { useNotification } from "./NotificationProvider";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -88,6 +89,7 @@ export default function ExpenseDialog({
   onSave,
   editingExpense,
 }: ExpenseDialogProps) {
+  const { showNotification } = useNotification();
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [payerId, setPayerId] = useState("");
@@ -284,6 +286,8 @@ export default function ExpenseDialog({
           .insert(splitPayload);
 
         if (splitError) throw splitError;
+        
+        showNotification("Expense updated successfully", "success");
       } else {
         // Insert mode
         const { data: expenseData, error: expenseError } = await supabase
@@ -295,6 +299,7 @@ export default function ExpenseDialog({
             payer_member_id: payerId,
             category,
             date,
+            created_by: currentUserId,
           })
           .select()
           .single();
@@ -312,12 +317,15 @@ export default function ExpenseDialog({
           .insert(splitPayload);
 
         if (splitError) throw splitError;
+
+        showNotification("Expense added successfully", "success");
       }
 
       onSave();
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to save expense.");
+      showNotification(err.message || "Failed to save expense.", "error");
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import MobileFriendlyIcon from "@mui/icons-material/MobileFriendly";
+import { NotificationProvider } from "./NotificationProvider";
 
 // Create custom premium dark theme
 const darkTheme = createTheme({
@@ -234,7 +235,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
 
           {/* Inner App Container: spacing offset for Dynamic Island notch on desktop only */}
           <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", pt: { xs: 0, md: 6 } }}>
-            {children}
+            <NotificationProvider>{children}</NotificationProvider>
           </Box>
 
           {/* iOS Home Indicator Bar: hidden on mobile */}

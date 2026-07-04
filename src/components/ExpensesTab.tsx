@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Expense, GroupMember } from "@/types";
+import { useNotification } from "./NotificationProvider";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -149,6 +150,7 @@ const formatDateGroupLabel = (date: string) => {
 interface ExpensesTabProps {
   groupId: string;
   members: GroupMember[];
+  currentUserId: string;
   refreshTrigger: number;
   onExpensesChange: () => void;
   onOpenExpenseDialog: () => void;
@@ -158,11 +160,13 @@ interface ExpensesTabProps {
 export default function ExpensesTab({
   groupId,
   members,
+  currentUserId,
   refreshTrigger,
   onExpensesChange,
   onOpenExpenseDialog,
   onEditExpense,
 }: ExpensesTabProps) {
+  const { showNotification } = useNotification();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -188,6 +192,7 @@ export default function ExpensesTab({
           payer_member_id,
           category,
           date,
+          created_by,
           created_at
         `)
         .eq("group_id", groupId)
@@ -233,10 +238,12 @@ export default function ExpensesTab({
     try {
       const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
       if (error) throw error;
+      showNotification("Expense deleted successfully", "success");
       onExpensesChange();
       await fetchExpenses();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting expense:", err);
+      showNotification(err.message || "Failed to delete expense", "error");
     }
   };
 
@@ -411,7 +418,7 @@ export default function ExpensesTab({
               key={expense.id}
               variant="outlined"
               sx={{
-                borderRadius: 4,
+                borderRadius: 2,
                 cursor: "pointer",
                 borderColor: isExpanded ? "rgba(99, 102, 241, 0.3)" : "rgba(255, 255, 255, 0.05)",
                 bgcolor: isExpanded ? "rgba(22, 28, 47, 0.7)" : "rgba(18, 24, 41, 0.45)",
@@ -467,29 +474,31 @@ export default function ExpensesTab({
                     })}
                   </Box>
 
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 1.5 }}>
-                    <Button
-                      variant="text"
-                      color="primary"
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditExpense(expense);
-                      }}
-                    >
-                      Edit Expense
-                    </Button>
-                    <Button
-                      variant="text"
-                      color="error"
-                      size="small"
-                      startIcon={<DeleteIcon />}
-                      onClick={(e) => handleDeleteExpense(expense.id, e)}
-                    >
-                      Delete Expense
-                    </Button>
-                  </Box>
+                  {expense.created_by === currentUserId && (
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2, gap: 1.5 }}>
+                      <Button
+                        variant="text"
+                        color="primary"
+                        size="small"
+                        startIcon={<EditIcon />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditExpense(expense);
+                        }}
+                      >
+                        Edit Expense
+                      </Button>
+                      <Button
+                        variant="text"
+                        color="error"
+                        size="small"
+                        startIcon={<DeleteIcon />}
+                        onClick={(e) => handleDeleteExpense(expense.id, e)}
+                      >
+                        Delete Expense
+                      </Button>
+                    </Box>
+                  )}
                 </CardContent>
               </Collapse>
             </Card>
