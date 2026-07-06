@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import Alert, { AlertColor } from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 
@@ -14,35 +14,35 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<AlertColor>("success");
-  const [activeTimeout, setActiveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<any>(null);
 
   const showNotification = useCallback((msg: string, sev: AlertColor = "success") => {
     setMessage(msg);
     setSeverity(sev);
     setOpen(true);
 
-    setActiveTimeout((prevTimeout) => {
-      if (prevTimeout) clearTimeout(prevTimeout);
-      return setTimeout(() => {
-        setOpen(false);
-      }, 4000);
-    });
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      setOpen(false);
+    }, 4000);
   }, []);
 
   const handleClose = () => {
     setOpen(false);
-    if (activeTimeout) {
-      clearTimeout(activeTimeout);
-      setActiveTimeout(null);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   };
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (activeTimeout) clearTimeout(activeTimeout);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [activeTimeout]);
+  }, []);
 
   return (
     <NotificationContext.Provider value={{ showNotification }}>

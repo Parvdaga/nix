@@ -518,7 +518,7 @@ export default function ExpensesTab({
         ))}
 
         {expenses.length === 0 && (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyCenter: "center", py: 8, gap: 1.5 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 8, gap: 1.5 }}>
             <CategoryIcon sx={{ fontSize: 48, color: "rgba(255, 255, 255, 0.06)" }} />
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
               No expenses recorded yet.

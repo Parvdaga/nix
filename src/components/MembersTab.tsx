@@ -22,6 +22,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
@@ -393,5 +394,4 @@ export default function MembersTab({
   );
 }
 
-// Add CSS module definitions if needed, otherwise rely on slotProps
-import InputAdornment from "@mui/material/InputAdornment";
+

@@ -16,13 +16,14 @@ export function buildUpiLink({
   payeeName,
   transactionNote = "Nix Settlement",
 }: BuildUpiLinkParams) {
-  const searchParams = new URLSearchParams({
-    pa: payeeAddress,
-    pn: payeeName,
-    am: formatAmount(amount),
-    tn: transactionNote,
-    cu: "INR",
-  });
-
-  return `upi://pay?${searchParams.toString()}`;
+  const formattedAmount = amount.toFixed(2).replace(/\.00$/, "");
+  
+  // URL encode payeeName and transactionNote, preserving standard %20 for spaces
+  const encodedName = encodeURIComponent(payeeName.trim());
+  const encodedNote = encodeURIComponent(transactionNote.trim());
+  
+  // Keep the UPI ID VPA address unencoded so the '@' is a literal '@'
+  const cleanAddress = payeeAddress.trim();
+  
+  return `upi://pay?pa=${cleanAddress}&pn=${encodedName}&am=${formattedAmount}&cu=INR&tn=${encodedNote}`;
 }

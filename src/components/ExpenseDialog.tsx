@@ -499,7 +499,7 @@ export default function ExpenseDialog({
               </Typography>
               <Box sx={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1.5, pr: 0.5 }}>
                 {members.map((m) => (
-                  <Box key={m.id} sx={{ display: "flex", alignItems: "center", justifySpaceBetween: "space-between", gap: 2 }}>
+                  <Box key={m.id} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
                     <Typography variant="body2" sx={{ flex: 1, fontWeight: 500 }}>
                       {m.name}
                     </Typography>

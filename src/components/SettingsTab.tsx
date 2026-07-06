@@ -713,7 +713,7 @@ export default function SettingsTab({
           </Box>
 
           {/* Custom keypad grid */}
-          <Box sx={{ width: "100%", maxSquare: 230 }}>
+          <Box sx={{ width: "100%", maxWidth: 230 }}>
             <Grid container spacing={1.5}>
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                 <Grid key={num} size={4} sx={{ display: "flex", justifyContent: "center" }}>

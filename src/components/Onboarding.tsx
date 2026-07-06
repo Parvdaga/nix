@@ -251,7 +251,7 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
               </Box>
 
               {/* Interactive Keypad */}
-              <Box sx={{ width: "100%", maxSquare: 280, mt: 1 }}>
+              <Box sx={{ width: "100%", maxWidth: 280, mt: 1 }}>
                 <Grid container spacing={2}>
                   {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                     <Grid key={num} size={4} sx={{ display: "flex", justifyContent: "center" }}>
