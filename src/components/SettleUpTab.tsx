@@ -350,11 +350,10 @@ export default function SettleUpTab({
                     <Button
                       variant="contained"
                       fullWidth
+                      component="a"
+                      href={upiUrl}
                       startIcon={<CallMadeIcon />}
-                      onClick={() => {
-                        window.location.href = upiUrl;
-                      }}
-                      sx={{ py: 1.5, mt: 1 }}
+                      sx={{ py: 1.5, mt: 1, textDecoration: "none" }}
                     >
                       Pay via Mobile UPI App
                     </Button>

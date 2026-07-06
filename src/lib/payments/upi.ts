@@ -6,8 +6,8 @@ type BuildUpiLinkParams = {
 };
 
 function formatAmount(amount: number) {
-  // Format amount to 2 decimal places, and strip trailing decimals if .00
-  return amount.toFixed(2).replace(/\.00$/, "");
+  // Format amount to 2 decimal places
+  return amount.toFixed(2);
 }
 
 export function buildUpiLink({
@@ -16,14 +16,17 @@ export function buildUpiLink({
   payeeName,
   transactionNote = "Nix Settlement",
 }: BuildUpiLinkParams) {
-  const formattedAmount = amount.toFixed(2).replace(/\.00$/, "");
+  const formattedAmount = amount.toFixed(2);
   
-  // URL encode payeeName and transactionNote, preserving standard %20 for spaces
+  // URL encode payeeName
   const encodedName = encodeURIComponent(payeeName.trim());
-  const encodedNote = encodeURIComponent(transactionNote.trim());
   
   // Keep the UPI ID VPA address unencoded so the '@' is a literal '@'
   const cleanAddress = payeeAddress.trim();
+
+  // Generate a unique transaction reference (e.g. NIX_<timestamp>_<random>)
+  const tr = `NIX_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
   
-  return `upi://pay?pa=${cleanAddress}&pn=${encodedName}&am=${formattedAmount}&cu=INR&tn=${encodedNote}`;
+  // Temporarily remove 'tn' (transaction note) as some receiving UPI apps fail / cancel payments when it is included
+  return `upi://pay?pa=${cleanAddress}&pn=${encodedName}&tr=${tr}&am=${formattedAmount}&cu=INR`;
 }
